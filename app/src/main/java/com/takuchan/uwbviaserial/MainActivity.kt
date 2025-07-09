@@ -1,7 +1,5 @@
 package com.takuchan.uwbviaserial
 
-import android.R
-import android.content.Context
 import android.os.Build
 import android.os.Bundle
 import android.os.VibrationEffect
@@ -19,7 +17,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -41,6 +38,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -53,15 +51,13 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.takuchan.uwbviaserial.ui.theme.UWBviaSerialTheme
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+
 
 // MainActivity.kt
 class MainActivity : ComponentActivity() {
@@ -76,15 +72,14 @@ class MainActivity : ComponentActivity() {
 
                 var showSettingsDialog by remember { mutableStateOf(false) }
 
-
-                //バイブレーションサービスを取得
+                // バイブレーションサービスを取得
                 val context = this
                 val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+                    val vibratorManager = context.getSystemService(VIBRATOR_MANAGER_SERVICE) as VibratorManager
                     vibratorManager.defaultVibrator
                 } else {
                     @Suppress("DEPRECATION")
-                    context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+                    context.getSystemService(VIBRATOR_SERVICE) as Vibrator
                 }
 
                 if (uiState.timerFinished){
@@ -108,80 +103,176 @@ class MainActivity : ComponentActivity() {
                         viewModel.setLastVibratedSecond(uiState.remainingTime)
                     }
                 }
-                Scaffold(
-                    modifier = Modifier.fillMaxSize(),
-                    topBar = {
-                        UwbTopAppBar(onSettingsClick = { showSettingsDialog = true })
-                    }
-                ) { innerPadding ->
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(innerPadding)
-                    ){
-                        Box(modifier = Modifier
-                            .weight(1f)
-                        ) {
-                            RoomView(
-                                u0 = uiState.anchor0,
-                                u1 = uiState.anchor1,
-                                u2 = uiState.anchor2,
-                                tag = uiState.tag
-                            )
-                        }
-                        // 制限時間開始ボタンとタイマー表示を画面下部に配置
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Button(
-                                onClick = { viewModel.startCountdown(13) }, // 60秒のカウントダウンを開始
-                                enabled = !uiState.isTimerRunning // タイマーが実行中でない場合のみ有効
-                            ) {
-                                Text("制限時間を開始")
-                            }
-                            Text(
-                                text = "残り時間: ${uiState.remainingTime}秒",
-                                fontSize = 24.sp,
-                                color = if (uiState.remainingTime <= 10 && uiState.isTimerRunning) Color.Red else MaterialTheme.colorScheme.onBackground
-                            )
-                        }
-                    }
 
-
-                    if (showSettingsDialog) {
-                        AnchorSettingsDialog(
-                            initialDistance01 = uiState.distance01,
-                            initialDistance02 = uiState.distance02,
-                            initialDistance12 = uiState.distance12,
-                            onDismiss = { showSettingsDialog = false },
-                            onSave = { dist01, dist02,dist12 ->
-                                viewModel.updateAnchorDistances(dist01, dist02,dist12)
-                                showSettingsDialog = false
-                            }
-                        )
-                    }
-                    if (uiState.showTimerEndDialog) {
-                        AlertDialog(
-                            onDismissRequest = { viewModel.hideTimerFinishedDialog() },
-                            title = { Text("時間切れ！") },
-                            text = { Text("制限時間が終了しました！") },
-                            confirmButton = {
-                                TextButton(onClick = { viewModel.hideTimerFinishedDialog() }) {
-                                    Text("OK")
-                                }
-                            }
-                        )
-                    }
-                }
+                MainScreen(
+                    uiState = uiState,
+                    onSettingsClick = { showSettingsDialog = true },
+                    onStartCountdown = { viewModel.startCountdown(uiState.initialCountDown) },
+                    onSetCountDownTime = { viewModel.setCountDown(it) },
+                    onAnchorDistancesSave = { d01, d02, d12 -> viewModel.updateAnchorDistances(d01, d02, d12) },
+                    onTimerFinishedDialogDismiss = { viewModel.hideTimerFinishedDialog() },
+                    showSettingsDialog = showSettingsDialog,
+                    onSettingsDialogDismiss = { showSettingsDialog = false }
+                )
             }
         }
     }
 }
 
+// --- MainScreen Composable ---
+@Composable
+fun MainScreen(
+    uiState: MainActivityUiState,
+    onSettingsClick: () -> Unit,
+    onStartCountdown: () -> Unit,
+    onSetCountDownTime: (Int) -> Unit,
+    onAnchorDistancesSave: (Double, Double, Double) -> Unit,
+    onTimerFinishedDialogDismiss: () -> Unit,
+    showSettingsDialog: Boolean,
+    onSettingsDialogDismiss: () -> Unit
+) {
+    var showNumberPickerDialog by remember { mutableStateOf(false) }
+
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        topBar = {
+            UwbTopAppBar(onSettingsClick = onSettingsClick)
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ){
+            Box(modifier = Modifier
+                .weight(1f)
+            ) {
+                RoomView(
+                    u0 = uiState.anchor0,
+                    u1 = uiState.anchor1,
+                    u2 = uiState.anchor2,
+                    tag = uiState.tag
+                )
+            }
+            // 制限時間開始ボタンとタイマー表示を画面下部に配置
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Button(
+                    onClick = { showNumberPickerDialog = true },
+                    enabled = !uiState.isTimerRunning // タイマーが実行中でない場合のみ有効
+                ) {
+                    Text("時間")
+                }
+                Button(
+                    onClick = onStartCountdown,
+                    enabled = !uiState.isTimerRunning // タイマーが実行中でない場合のみ有効
+                ) {
+                    Text("制限時間を開始")
+                }
+                Text(
+                    text = "残り時間: ${uiState.remainingTime}秒",
+                    fontSize = 24.sp,
+                    color = if (uiState.remainingTime <= 10 && uiState.isTimerRunning) Color.Red else MaterialTheme.colorScheme.onBackground
+                )
+
+            }
+        }
+
+        if (showSettingsDialog) {
+            AnchorSettingsDialog(
+                initialDistance01 = uiState.distance01,
+                initialDistance02 = uiState.distance02,
+                initialDistance12 = uiState.distance12,
+                onDismiss = onSettingsDialogDismiss,
+                onSave = { dist01, dist02, dist12 ->
+                    onAnchorDistancesSave(dist01, dist02, dist12)
+                    onSettingsDialogDismiss()
+                }
+            )
+        }
+
+        // ここにNumberPickerDialogのロジックを直接組み込む
+        if (showNumberPickerDialog) {
+            var currentValue by remember { mutableStateOf(uiState.initialCountDown) }
+
+            AlertDialog(
+                onDismissRequest = { showNumberPickerDialog = false }, // ダイアログの外をタップで閉じる
+                title = {
+                    Text(text = "数値を選択", modifier = Modifier.padding(bottom = 8.dp))
+                },
+                text = {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        // 現在の数値を表示
+                        Text(
+                            text = "$currentValue",
+                            fontSize = 48.sp,
+                            modifier = Modifier.padding(vertical = 16.dp)
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceAround,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // マイナスボタン
+                            Button(
+                                onClick = { currentValue -= 10 },
+                                modifier = Modifier.size(72.dp)
+                            ) {
+                                Text(text = "-", fontSize = 24.sp)
+                            }
+                            // プラスボタン
+                            Button(
+                                onClick = { currentValue += 10 },
+                                modifier = Modifier.size(72.dp)
+                            ) {
+                                Text(text = "+", fontSize = 24.sp)
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            onSetCountDownTime(currentValue)
+                            showNumberPickerDialog = false
+                        }
+                    ) {
+                        Text("OK")
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = {
+                            showNumberPickerDialog = false
+                        }
+                    ) {
+                        Text("キャンセル")
+                    }
+                }
+            )
+        }
+        if (uiState.showTimerEndDialog) {
+            AlertDialog(
+                onDismissRequest = onTimerFinishedDialogDismiss,
+                title = { Text("時間切れ！") },
+                text = { Text("制限時間が終了しました！") },
+                confirmButton = {
+                    TextButton(onClick = onTimerFinishedDialogDismiss) {
+                        Text("OK")
+                    }
+                }
+            )
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -347,7 +438,7 @@ fun AnchorSettingsDialog(
                         distance01 = newValue.filter { it.isDigit() || it == '.' }
                     },
                     label = { Text("0から1のAnchor距離 (m)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -357,7 +448,7 @@ fun AnchorSettingsDialog(
                         distance02 = newValue.filter { it.isDigit() || it == '.' }
                     },
                     label = { Text("0から2のAnchor距離(m)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -367,7 +458,7 @@ fun AnchorSettingsDialog(
                         distance12 = newValue.filter { it.isDigit() || it == '.' }
                     },
                     label = { Text("1から2のAnchor距離(m)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -401,14 +492,16 @@ fun Double.format(digits: Int) = "%.${digits}f".format(this)
 @Composable
 fun AnchorDetail(color: Color,text: String,value: String) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(
             modifier = Modifier
                 .size(16.dp)
                 .background(color)
-            
+
         ){
 
         }
@@ -428,50 +521,29 @@ fun AnchorSettingsDialogPreview() {
 }
 
 
-// Preview functions (optional, but good practice)
+// --- Preview functions (refactored) ---
 @Preview(showBackground = true)
 @Composable
-fun DefaultPreview() {
+fun MainScreenPreview() {
     UWBviaSerialTheme {
-        val viewModel: MainActivityViewModel = viewModel()
-        val uiState by viewModel.uiState.collectAsState()
-        Scaffold(
-            topBar = { UwbTopAppBar(onSettingsClick = {}) }
-        ) { innerPadding ->
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                ) {
-                    RoomView(
-                        u0 = uiState.anchor0,
-                        u1 = uiState.anchor1,
-                        u2 = uiState.anchor2,
-                        tag = uiState.tag,
-                    )
-                }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Button(onClick = { /* ViewModelのスタート関数を呼び出す */ }) {
-                        Text("制限時間を開始")
-                    }
-                    Text(
-                        text = "残り時間: ${uiState.remainingTime}秒",
-                        fontSize = 24.sp,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                }
-            }
-        }
+        // You can provide mock data for uiState or use a simple default state
+        val mockUiState = MainActivityUiState(
+            anchor0 = UwbCoordinate(0.0, 0.0),
+            anchor1 = UwbCoordinate(6.0, 0.0),
+            anchor2 = UwbCoordinate(0.0, 6.0),
+            tag = UwbCoordinate(2.5, 3.5),
+            remainingTime = 30,
+            isTimerRunning = false
+        )
+        MainScreen(
+            uiState = mockUiState,
+            onSettingsClick = { /* Do nothing for preview */ },
+            onStartCountdown = { /* Do nothing for preview */ },
+            onAnchorDistancesSave = { _, _, _ -> /* Do nothing for preview */ },
+            onTimerFinishedDialogDismiss = { /* Do nothing for preview */ },
+            showSettingsDialog = false,
+            onSettingsDialogDismiss = { /* Do nothing for preview */ },
+            onSetCountDownTime = {  }
+        )
     }
 }

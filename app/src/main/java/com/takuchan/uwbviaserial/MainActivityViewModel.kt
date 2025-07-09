@@ -27,7 +27,8 @@ data class MainActivityUiState(
     val isTimerRunning: Boolean = false,
     val timerFinished: Boolean = false, // タイマーが終了したことを示すフラグ
     val showTimerEndDialog: Boolean = false, // タイマー終了ダイアログの表示フラグ
-    val lastVibratedSecond: Int = -1 // 最後にバイブレーションした秒数を記録
+    val lastVibratedSecond: Int = -1, // 最後にバイブレーションした秒数を記録
+    val initialCountDown: Int = 10
 )
 
 class MainActivityViewModel: ViewModel() {
@@ -135,6 +136,11 @@ class MainActivityViewModel: ViewModel() {
                 delay(1000L) // 1秒待機
             }
         }
+    }
+    fun setCountDown(time: Int){
+        _uiState.value = _uiState.value.copy(
+            initialCountDown = time
+        )
     }
 
     /**
