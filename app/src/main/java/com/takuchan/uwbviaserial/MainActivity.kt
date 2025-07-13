@@ -1,5 +1,6 @@
 package com.takuchan.uwbviaserial
 
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.os.VibrationEffect
@@ -34,6 +35,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.takuchan.uwbconnect.UWBConnectActivity
 import com.takuchan.uwbviaserial.ui.components.GameLegend
 import com.takuchan.uwbviaserial.ui.screens.MainScreen
 import com.takuchan.uwbviaserial.ui.theme.ComponentsColor
@@ -90,6 +92,10 @@ class MainActivity : ComponentActivity() {
                     onSettingsClick = { showSettingsDialog = true },
                     onRoomSettingsClick = { showRoomSettingsDialog = true },
                     onStartCountdown = { viewModel.startCountdown(uiState.initialCountDown) },
+                    onStatusButtonClick = {
+                        val intent = Intent(this, UWBConnectActivity::class.java)
+                        startActivity(intent)
+                    },
                     onSetCountDownTime = { viewModel.setCountDown(it) },
                     onAnchorDistancesSave = { d01, d02, d12 -> viewModel.updateAnchorDistances(d01, d02, d12) },
                     onTimerFinishedDialogDismiss = { viewModel.hideTimerFinishedDialog() },
