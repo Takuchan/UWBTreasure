@@ -2,6 +2,7 @@ package com.takuchan.uwbviaserial
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.takuchan.uwbviaserial.ui.components.format
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
