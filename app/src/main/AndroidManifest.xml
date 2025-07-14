@@ -4,6 +4,7 @@
 
     <uses-permission android:name="android.permission.VIBRATE" />
     <application
+        android:name=".UWBTreasureApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -20,6 +21,7 @@
             android:theme="@style/Theme.UWBviaSerial">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>

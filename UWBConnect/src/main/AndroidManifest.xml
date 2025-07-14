@@ -6,7 +6,11 @@
             android:name=".UWBConnectActivity"
             android:exported="false"
             android:label="@string/title_activity_uwbconnect"
-            android:theme="@style/Theme.UWBviaSerial" />
+            android:theme="@style/Theme.UWBviaSerial">
+            <intent-filter>
+                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
+            </intent-filter>
+        </activity>
     </application>
 
 </manifest>

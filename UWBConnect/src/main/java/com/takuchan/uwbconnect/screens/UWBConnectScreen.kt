@@ -19,11 +19,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.takuchan.opencampusuwb.UsbSerialViewModel
 import com.takuchan.uwbconnect.ui.theme.UWBviaSerialTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UWBConnectScreen(onFinish:() -> Unit){
+fun UWBConnectScreen(
+    onFinish:() -> Unit,
+    viewModel: UsbSerialViewModel = hiltViewModel()
+){
     Scaffold(
         topBar = {
             TopAppBar(
@@ -40,7 +45,9 @@ fun UWBConnectScreen(onFinish:() -> Unit){
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = {},
+                onClick = {
+                    viewModel.refreshDeviceList()
+                },
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
                 Text("再検出")

@@ -18,7 +18,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.takuchan.uwbconnect.screens.SerialSelectScreen
 import com.takuchan.uwbconnect.screens.UWBConnectScreen
 import com.takuchan.uwbconnect.ui.theme.UWBviaSerialTheme
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint // Hiltのエントリーポイントとして指定
 class UWBConnectActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
