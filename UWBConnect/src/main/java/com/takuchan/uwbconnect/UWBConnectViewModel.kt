@@ -17,7 +17,6 @@ import com.takuchan.uwbconnect.data.ConnectionStatus
 import com.takuchan.uwbconnect.data.TrilaterationResult
 import com.takuchan.uwbconnect.repository.ExchangeUWBDataParser
 import com.takuchan.uwbconnect.repository.SerialConnectRepository
-import com.takuchan.uwbconnect.repository.UwbDataRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,7 +40,6 @@ data class UWBConnectUiState(
 @HiltViewModel
 class UsbSerialViewModel @Inject constructor(
     private val repository: SerialConnectRepository,
-    private val uwbDataRepository: UwbDataRepository,
     private val application: Application
 ) : ViewModel() {
 
@@ -59,26 +57,10 @@ class UsbSerialViewModel @Inject constructor(
 
     init {
         // Repositoryからの状態変化を監視
-        observeConnectionStatus()
         observeStatusMessage()
         refreshDeviceList() // 初期化時にデバイスリストを更新
-
-
     }
 
-    private fun observeConnectionStatus() {
-        repository.connectionStatus
-            .onEach { status ->
-                _uiState.update { it.copy(connected = status == ConnectionStatus.CONNECTED) }
-                // 接続されたらデータ受信を開始し、そうでなければ停止する
-                if (status == ConnectionStatus.CONNECTED) {
-                    startListeningData()
-                } else {
-                    stopListeningData()
-                }
-            }
-            .launchIn(viewModelScope)
-    }
 
     private fun observeStatusMessage() {
         repository.statusMessage
@@ -86,44 +68,7 @@ class UsbSerialViewModel @Inject constructor(
             .launchIn(viewModelScope)
     }
 
-    private fun startListeningData() {
-        // すでに実行中なら何もしない
-        if (dataListenJob?.isActive == true) return
 
-        dataListenJob = repository.listenToSerialData()
-            .onEach { newData ->
-                val ansiRegex = Regex("""\u001B\[[0-9;]*m""")
-                val cleanedData = newData.replace(ansiRegex, "")
-
-                uwbParser.parseLine(cleanedData)
-                val readyDataList = uwbParser.getTrilaterationData() // デフォルトで[0, 1, 2]を要求
-
-                if (readyDataList != null) {
-                    // 3つのアンカーデータを格納した結果オブジェクトを作成
-                    val result = TrilaterationResult(
-                        anchor0 = readyDataList.first { it.id == 0 },
-                        anchor1 = readyDataList.first { it.id == 1 },
-                        anchor2 = readyDataList.first { it.id == 2 }
-                    )
-
-                    Log.d("result11", result.toString())
-                    viewModelScope.launch {
-                        uwbDataRepository.updateResult(result)
-                    }
-                }
-
-            }
-            .catch { e ->
-                // Flowがエラーで終了した場合の処理
-                _uiState.update { it.copy(statusMessage = "Data listening error: ${e.message}") }
-            }
-            .launchIn(viewModelScope)
-    }
-
-    private fun stopListeningData() {
-        dataListenJob?.cancel()
-        dataListenJob = null
-    }
 
     //接続しているシリアル通信のデバイスを検知
     fun refreshDeviceList() {
@@ -203,10 +148,5 @@ class UsbSerialViewModel @Inject constructor(
         ContextCompat.registerReceiver(application, permissionReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
     }
 
-    override fun onCleared() {
-        super.onCleared()
-        application.unregisterReceiver(permissionReceiver)
-        // ViewModelが破棄されるときに切断処理を確実に行う
-        disconnect()
-    }
+
 }

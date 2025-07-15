@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -20,6 +21,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -35,6 +37,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.takuchan.uwbconnect.UWBConnectActivity
 import com.takuchan.uwbviaserial.ui.components.GameLegend
@@ -84,6 +89,24 @@ class MainActivity : ComponentActivity() {
                             vibrator.vibrate(vibrationDuration)
                         }
                         viewModel.setLastVibratedSecond(uiState.remainingTime)
+                    }
+                }
+
+                val lifecycleOwner = LocalLifecycleOwner.current
+
+                DisposableEffect(lifecycleOwner) {
+                    val observer = object : DefaultLifecycleObserver {
+                        override fun onResume(owner: LifecycleOwner) {
+                            super.onResume(owner)
+                            Log.d("MyScreen", "Screen resumed, calling ViewModel method")
+                            // ここでViewModelのメソッドを呼び出す
+                            viewModel.observeConnectionStatus() // 例: データの再取得など
+                        }
+                    }
+                    lifecycleOwner.lifecycle.addObserver(observer)
+
+                    onDispose {
+                        lifecycleOwner.lifecycle.removeObserver(observer)
                     }
                 }
 
