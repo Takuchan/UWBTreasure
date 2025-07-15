@@ -124,7 +124,6 @@ class MainActivityViewModel @Inject constructor(
 
         dataListenJob = serialConnectRepository.listenToSerialData()
             .onEach { newData ->
-                Log.d("newDate","$newData")
                 val ansiRegex = Regex("""\u001B\[[0-9;]*m""")
                 val cleanedData = newData.replace(ansiRegex, "")
 
@@ -138,6 +137,9 @@ class MainActivityViewModel @Inject constructor(
                         anchor1 = readyDataList.first { it.id == 1 },
                         anchor2 = readyDataList.first { it.id == 2 }
                     )
+
+                    Log.d("anchorD",result.toString())
+                    calculateTagPositionFromDistances(result)
 
                 }
 
@@ -153,7 +155,64 @@ class MainActivityViewModel @Inject constructor(
         dataListenJob?.cancel()
         dataListenJob = null
     }
+    private fun calculateTagPositionFromDistances(result: TrilaterationResult) {
+        val currentState = _uiState.value
+        val anchor0Pos = currentState.anchor0
+        val anchor1Pos = currentState.anchor1
+        val anchor2Pos = currentState.anchor2
 
+        // AnchorDataのdistanceはInt?型で、単位はミリメートル(cm)
+        // 計算にはメートル(m)を使用するため、1000で割る
+        val r0 = result.anchor0.distance?.toDouble()?.div(100.0) ?: return
+        val r1 = result.anchor1.distance?.toDouble()?.div(100.0) ?: return
+        val r2 = result.anchor2.distance?.toDouble()?.div(100.0) ?: return
+
+        // 三辺測位の計算
+        // 連立方程式を解いてX, Yを求める
+        // (x - x0)^2 + (y - y0)^2 = r0^2
+        // (x - x1)^2 + (y - y1)^2 = r1^2
+        // (x - x2)^2 + (y - y2)^2 = r2^2
+        // これを展開して整理すると、xとyに関する2つの線形方程式が得られる
+
+        val x0 = anchor0Pos.x
+        val y0 = anchor0Pos.y
+        val x1 = anchor1Pos.x
+        val y1 = anchor1Pos.y
+        val x2 = anchor2Pos.x
+        val y2 = anchor2Pos.y
+
+        // 2(x1-x0)x + 2(y1-y0)y = (r0^2 - r1^2) + (x1^2 - x0^2) + (y1^2 - y0^2)
+        // 2(x2-x0)x + 2(y2-y0)y = (r0^2 - r2^2) + (x2^2 - x0^2) + (y2^2 - y0^2)
+        // Ax + By = C
+        // Dx + Ey = F
+
+        val A = 2 * (x1 - x0)
+        val B = 2 * (y1 - y0)
+        val C = r0*r0 - r1*r1 + x1*x1 - x0*x0 + y1*y1 - y0*y0
+
+        val D = 2 * (x2 - x0)
+        val E = 2 * (y2 - y0)
+        val F = r0*r0 - r2*r2 + x2*x2 - x0*x0 + y2*y2 - y0*y0
+
+        val denominator = A * E - B * D
+
+        // 分母が0の場合、アンカーが一直線上にあるため計算できない
+        if (denominator.isNaN() || denominator == 0.0) {
+            Log.e("Trilateration", "Denominator is zero. Anchors might be collinear.")
+            return
+        }
+
+        val tagX = (C * E - B * F) / denominator
+        val tagY = (A * F - C * D) / denominator
+
+        if (tagX.isNaN() || tagY.isNaN()) {
+            Log.e("Trilateration", "Calculated position is NaN.")
+            return
+        }
+
+        // 計算された位置でUIを更新
+        updateTagPosition(tagX, tagY)
+    }
 
     /**
      * 部屋のサイズを更新

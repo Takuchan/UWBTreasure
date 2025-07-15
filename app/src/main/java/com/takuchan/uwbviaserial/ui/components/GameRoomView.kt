@@ -1,5 +1,6 @@
 package com.takuchan.uwbviaserial.ui.components
 
+import android.util.Log
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
@@ -190,6 +191,7 @@ fun DrawScope.drawTag(
     tag: UwbCoordinate,
     coordToPixel: (Double, Double) -> Offset
 ) {
+    Log.d("tagLoc","$tag")
     val center = coordToPixel(tag.x, tag.y)
     val radius = 12.dp.toPx()
 
