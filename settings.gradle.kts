@@ -23,3 +23,4 @@ dependencyResolutionManagement {
 rootProject.name = "UWBviaSerial"
 include(":app")
 include(":UWBConnect")
+include(":UWBLocalization")

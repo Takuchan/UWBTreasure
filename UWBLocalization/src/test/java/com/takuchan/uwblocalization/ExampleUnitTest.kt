@@ -1,6 +1,5 @@
-package com.takuchan.uwbconnect
+package com.takuchan.uwblocalization
 
-import com.takuchan.uwbconnect.repository.ExchangeUWBDataParser
 import org.junit.Test
 
 import org.junit.Assert.*

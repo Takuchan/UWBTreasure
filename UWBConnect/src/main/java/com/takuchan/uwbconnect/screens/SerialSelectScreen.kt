@@ -16,11 +16,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -33,8 +31,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.takuchan.opencampusuwb.UWBConnectUiState
-import com.takuchan.opencampusuwb.UsbSerialViewModel
+import com.takuchan.uwbconnect.UWBConnectUiState
+import com.takuchan.uwbconnect.UsbSerialViewModel
 import com.takuchan.uwbconnect.ui.theme.UWBviaSerialTheme
 
 @Composable
@@ -173,7 +171,6 @@ private fun PreviewSerialSelectScreen() {
         SerialSelectContent(
             uiState = previewState,
             onDeviceSelected = {},
-            onRefreshClicked = {},
             onDisconnectClicked = {}
         )
     }
@@ -190,7 +187,6 @@ private fun PreviewConnectedScreen() {
         SerialSelectContent(
             uiState = previewState,
             onDeviceSelected = {},
-            onRefreshClicked = {},
             onDisconnectClicked = {}
         )
     }

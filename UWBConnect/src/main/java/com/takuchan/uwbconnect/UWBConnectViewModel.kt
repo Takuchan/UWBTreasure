@@ -1,4 +1,4 @@
-package com.takuchan.opencampusuwb // パッケージ名は元のものに合わせてください
+package com.takuchan.uwbconnect // パッケージ名は元のものに合わせてください
 
 import android.app.Application
 import android.app.PendingIntent
@@ -9,11 +9,14 @@ import android.content.IntentFilter
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbManager
 import android.os.Build
+import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.takuchan.uwbconnect.data.ConnectionStatus
+import com.takuchan.uwbconnect.repository.ExchangeUWBDataParser
 import com.takuchan.uwbconnect.repository.SerialConnectRepository
+import com.takuchan.uwbconnect.repository.TrilaterationResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -37,7 +40,8 @@ data class UWBConnectUiState(
     val dataList: List<DataEntry> = emptyList(),
     val statusMessage: String = "Please connect a device.",
     val availableDevices: List<UsbDevice> = emptyList(),
-    val totalDataCount: Int = 0
+    val totalDataCount: Int = 0,
+    val trilaterationResult: TrilaterationResult? = null
 )
 
 @HiltViewModel
@@ -55,10 +59,7 @@ class UsbSerialViewModel @Inject constructor(
 
     private var dataListenJob: Job? = null
 
-    // データ管理
-    private val dataList = mutableListOf<DataEntry>()
-    private val MAX_DATA_COUNT = 100
-    private var dataIdCounter = 0
+    private val uwbParser = ExchangeUWBDataParser()
 
 
     init {
@@ -66,6 +67,8 @@ class UsbSerialViewModel @Inject constructor(
         observeConnectionStatus()
         observeStatusMessage()
         refreshDeviceList() // 初期化時にデバイスリストを更新
+
+
     }
 
     private fun observeConnectionStatus() {
@@ -94,24 +97,27 @@ class UsbSerialViewModel @Inject constructor(
 
         dataListenJob = repository.listenToSerialData()
             .onEach { newData ->
-                synchronized(dataList) {
-                    dataList.add(
-                        DataEntry(
-                            id = ++dataIdCounter,
-                            data = newData,
-                            timestamp = System.currentTimeMillis()
-                        )
+                val ansiRegex = Regex("""\u001B\[[0-9;]*m""")
+                val cleanedData = newData.replace(ansiRegex, "")
+
+                uwbParser.parseLine(cleanedData)
+                val readyDataList = uwbParser.getTrilaterationData() // デフォルトで[0, 1, 2]を要求
+
+                if (readyDataList != null) {
+                    // 3つのアンカーデータを格納した結果オブジェクトを作成
+                    val result = TrilaterationResult(
+                        anchor0 = readyDataList.first { it.id == 0 },
+                        anchor1 = readyDataList.first { it.id == 1 },
+                        anchor2 = readyDataList.first { it.id == 2 }
                     )
-                    while (dataList.size > MAX_DATA_COUNT) {
-                        dataList.removeAt(0)
-                    }
-                    _uiState.update {
-                        it.copy(
-                            dataList = dataList.toList(),
-                            totalDataCount = dataIdCounter
-                        )
-                    }
+
+                    // UiStateを更新して、UIに結果を通知
+                    _uiState.update { it.copy(trilaterationResult = result) }
+
+                    // ログで確認
+                    Log.d("UsbSerialViewModel", "Trilateration data is ready: $result")
                 }
+
             }
             .catch { e ->
                 // Flowがエラーで終了した場合の処理
@@ -155,12 +161,6 @@ class UsbSerialViewModel @Inject constructor(
         }
     }
 
-    fun clearData() {
-        synchronized(dataList) {
-            dataList.clear()
-        }
-        _uiState.update { it.copy(dataList = emptyList()) }
-    }
 
     // --- パーミッション関連 ---
     private val permissionReceiver = object : BroadcastReceiver() {
@@ -178,11 +178,32 @@ class UsbSerialViewModel @Inject constructor(
 
     private fun requestUsbPermission(device: UsbDevice) {
         val intent = Intent(INTENT_ACTION_GRANT_USB)
-        val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0
-        val pendingIntent = PendingIntent.getBroadcast(application, 0, intent, flags)
+
+        // Android S (API 31) 以降では FLAG_IMMUTABLE を使用する
+        // 古いバージョンとの互換性を保ちつつ、必要に応じて FLAG_UPDATE_CURRENT も追加
+        val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) { // M (API 23) 以降でフラグの組み合わせが重要になることが多い
+            // FLAG_IMMUTABLE は API 23 (M) で追加されたため、それより古い場合は0
+            // S (API 31) 以降では FLAG_IMMUTABLE が必須または推奨
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            } else {
+                PendingIntent.FLAG_UPDATE_CURRENT // または他の適切なフラグ (例: FLAG_ONE_SHOT, FLAG_NO_CREATE)
+            }
+        } else {
+            0 // M (API 23) より古いバージョンの場合
+        }
+
+        // よりシンプルで一般的な修正方法（推奨）:
+        // Android S 以降は FLAG_IMMUTABLE を追加。それ以外は既存のフラグを維持。
+        val updatedFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT // 必要に応じて他のフラグも追加
+        } else {
+            PendingIntent.FLAG_UPDATE_CURRENT // S未満の場合は既存のフラグをそのまま使う（または0など適切なもの）
+        }
+
+        val pendingIntent = PendingIntent.getBroadcast(application, 0, intent, updatedFlags)
         usbManager.requestPermission(device, pendingIntent)
     }
-
     init {
         val filter = IntentFilter(INTENT_ACTION_GRANT_USB)
         ContextCompat.registerReceiver(application, permissionReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
