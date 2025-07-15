@@ -1,4 +1,4 @@
-package com.takuchan.uwbconnect // パッケージ名は元のものに合わせてください
+package com.takuchan.uwbconnect
 
 import android.app.Application
 import android.app.PendingIntent
@@ -14,9 +14,10 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.takuchan.uwbconnect.data.ConnectionStatus
+import com.takuchan.uwbconnect.data.TrilaterationResult
 import com.takuchan.uwbconnect.repository.ExchangeUWBDataParser
 import com.takuchan.uwbconnect.repository.SerialConnectRepository
-import com.takuchan.uwbconnect.repository.TrilaterationResult
+import com.takuchan.uwbconnect.repository.UwbDataRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,16 +29,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-
-data class DataEntry(
-    val id: Int,
-    val data: String,
-    val timestamp: Long = System.currentTimeMillis()
-)
 // UIの状態を表すデータクラス (RepositoryとViewModelで共有)
 data class UWBConnectUiState(
     val connected: Boolean = false,
-    val dataList: List<DataEntry> = emptyList(),
     val statusMessage: String = "Please connect a device.",
     val availableDevices: List<UsbDevice> = emptyList(),
     val totalDataCount: Int = 0,
@@ -47,6 +41,7 @@ data class UWBConnectUiState(
 @HiltViewModel
 class UsbSerialViewModel @Inject constructor(
     private val repository: SerialConnectRepository,
+    private val uwbDataRepository: UwbDataRepository,
     private val application: Application
 ) : ViewModel() {
 
@@ -111,11 +106,10 @@ class UsbSerialViewModel @Inject constructor(
                         anchor2 = readyDataList.first { it.id == 2 }
                     )
 
-                    // UiStateを更新して、UIに結果を通知
-                    _uiState.update { it.copy(trilaterationResult = result) }
-
-                    // ログで確認
-                    Log.d("UsbSerialViewModel", "Trilateration data is ready: $result")
+                    Log.d("result11", result.toString())
+                    viewModelScope.launch {
+                        uwbDataRepository.updateResult(result)
+                    }
                 }
 
             }

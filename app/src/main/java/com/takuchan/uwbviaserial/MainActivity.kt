@@ -34,16 +34,16 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.takuchan.uwbconnect.UWBConnectActivity
 import com.takuchan.uwbviaserial.ui.components.GameLegend
 import com.takuchan.uwbviaserial.ui.screens.MainScreen
 import com.takuchan.uwbviaserial.ui.theme.ComponentsColor
 import com.takuchan.uwbviaserial.ui.theme.UWBviaSerialTheme
+import dagger.hilt.android.AndroidEntryPoint
 
-
-
-// MainActivity class部分の更新
+@AndroidEntryPoint // ★このアノテーションを追加
 class MainActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.S)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -51,7 +51,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             UWBviaSerialTheme {
-                val viewModel: MainActivityViewModel = viewModel()
+                val viewModel: MainActivityViewModel = hiltViewModel()
                 val uiState by viewModel.uiState.collectAsState()
 
                 var showSettingsDialog by remember { mutableStateOf(false) }

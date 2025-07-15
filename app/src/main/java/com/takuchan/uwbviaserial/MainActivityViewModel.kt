@@ -1,16 +1,24 @@
 package com.takuchan.uwbviaserial
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.takuchan.uwbconnect.repository.UwbDataRepository
 import com.takuchan.uwbviaserial.ui.components.format
+import dagger.hilt.android.lifecycle.HiltViewModel
+import jakarta.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlin.math.sqrt
 import kotlin.random.Random
+
+
 
 data class MainActivityUiState(
     val isLoading: Boolean = false,
@@ -61,7 +69,11 @@ enum class GameState {
     FINISHED    // ゲーム終了
 }
 
-class MainActivityViewModel: ViewModel() {
+
+@HiltViewModel
+class MainActivityViewModel @Inject constructor(
+    private val uwbDataRepository: UwbDataRepository
+): ViewModel() {
     private val _uiState = MutableStateFlow(MainActivityUiState())
     val uiState: StateFlow<MainActivityUiState> = _uiState.asStateFlow()
 
@@ -69,6 +81,7 @@ class MainActivityViewModel: ViewModel() {
     private var gameJob: Job? = null
 
     init {
+        observeUwbData()
         // 初期設定
         calculateAnchorPositions(
             _uiState.value.distance01,
@@ -76,6 +89,71 @@ class MainActivityViewModel: ViewModel() {
             _uiState.value.distance12
         )
         generateRandomTreasureLocation()
+    }
+
+
+    private fun observeUwbData() {
+        uwbDataRepository.trilaterationFlow
+            .onEach { result ->
+                // 新しい測位データが届いた！
+                Log.d("MainActivityViewModel", "New UWB data received: $result")
+
+                // 現在のアンカー座標を取得
+                val currentState = _uiState.value
+                val a0 = currentState.anchor0
+                val a1 = currentState.anchor1
+                val a2 = currentState.anchor2
+
+                // UWBデバイスからの距離（cm）をメートルに変換
+                val r0 = result.anchor0.distance?.toDouble()?.div(100.0)
+                val r1 = result.anchor1.distance?.toDouble()?.div(100.0)
+                val r2 = result.anchor2.distance?.toDouble()?.div(100.0)
+
+                if (r0 != null && r1 != null && r2 != null) {
+                    // 三辺測位でタグの位置を計算
+                    val tagPosition = calculateTagPosition(a0, a1, a2, r0, r1, r2)
+                    if (tagPosition != null) {
+                        // 計算できた位置でプレイヤーの位置を更新
+                        updateTagPosition(tagPosition.x, tagPosition.y)
+                    } else {
+                        Log.w("MainActivityViewModel", "Failed to calculate tag position.")
+                    }
+                }
+            }
+            .launchIn(viewModelScope)
+    }
+
+    private fun calculateTagPosition(
+        a0: UwbCoordinate, a1: UwbCoordinate, a2: UwbCoordinate,
+        r0: Double, r1: Double, r2: Double
+    ): UwbCoordinate? {
+        try {
+            // 方程式を解くための変数設定
+            // 2(x1-x0)x + 2(y1-y0)y = (r0^2-r1^2) - (x0^2-x1^2) - (y0^2-y1^2)
+            // 2(x2-x0)x + 2(y2-y0)y = (r0^2-r2^2) - (x0^2-x2^2) - (y0^2-y2^2)
+            val A = 2 * (a1.x - a0.x)
+            val B = 2 * (a1.y - a0.y)
+            val C = (r0 * r0 - r1 * r1) - (a0.x * a0.x - a1.x * a1.x) - (a0.y * a0.y - a1.y * a1.y)
+
+            val D = 2 * (a2.x - a0.x)
+            val E = 2 * (a2.y - a0.y)
+            val F = (r0 * r0 - r2 * r2) - (a0.x * a0.x - a2.x * a2.x) - (a0.y * a0.y - a2.y * a2.y)
+
+            // クラメルの公式で行列式を解く
+            val determinant = A * E - B * D
+            if (determinant == 0.0) {
+                // アンカーが一直線上にあるなど、解が一意に定まらない場合
+                return null
+            }
+
+            val x = (C * E - B * F) / determinant
+            val y = (A * F - C * D) / determinant
+
+            return UwbCoordinate(x, y)
+        } catch (e: Exception) {
+            Log.e("Trilateration", "Error calculating tag position", e)
+            return null
+        }
     }
 
     /**
