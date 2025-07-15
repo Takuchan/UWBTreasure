@@ -32,6 +32,7 @@ fun MainScreen(
     uiState: MainActivityUiState,
     onSettingsClick: () -> Unit,
     onRoomSettingsClick: () -> Unit,
+    onStatusButtonClick: () -> Unit,
     onStartCountdown: () -> Unit,
     onSetCountDownTime: (Int) -> Unit,
     onAnchorDistancesSave: (Double, Double, Double) -> Unit,
@@ -52,9 +53,7 @@ fun MainScreen(
             TreasureHuntTopBar(
                 onSettingsClick = onSettingsClick,
                 onRoomSettingsClick = onRoomSettingsClick,
-                onStatusButtonClick = {
-                    //TODO:ステータスボタンの処理
-                }
+                onStatusButtonClick = onStatusButtonClick
             )
         },
         containerColor = MaterialTheme.colorScheme.background
@@ -162,7 +161,8 @@ private fun PreviewMainScreen(){
             showSettingsDialog = false,
             showRoomSettingsDialog = false,
             onSettingsDialogDismiss = {},
-            onRoomSettingsDialogDismiss = {}
+            onRoomSettingsDialogDismiss = {},
+            onStatusButtonClick = {}
         )
     }
 }
