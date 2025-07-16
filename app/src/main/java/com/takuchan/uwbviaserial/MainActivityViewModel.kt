@@ -3,6 +3,7 @@ package com.takuchan.uwbviaserial
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.takuchan.uwbconnect.data.AnchorData
 import com.takuchan.uwbconnect.data.ConnectionStatus
 import com.takuchan.uwbconnect.data.TrilaterationResult
 import com.takuchan.uwbconnect.repository.ExchangeUWBDataParser
@@ -67,7 +68,10 @@ data class MainActivityUiState(
     val errorMessage: String? = null,
     val showErrorDialog: Boolean = false,
 
-    val connected: Boolean = false
+    val connected: Boolean = false,
+
+    // ▼▼▼ どのアンカーIDによってバイブレーションがトリガーされたかを保持 ▼▼▼
+    val proximityVibrationAnchorId: Int? = null
 )
 
 enum class GameState {
@@ -130,8 +134,9 @@ class MainActivityViewModel @Inject constructor(
                 val ansiRegex = Regex("""\u001B\[[0-9;]*m""")
                 val cleanedData = newData.replace(ansiRegex, "")
 
+
                 uwbParser.parseLine(cleanedData)
-                val readyDataList = uwbParser.getTrilaterationData() // デフォルトで[0, 1, 2]を要求
+                val readyDataList = uwbParser.getTrilaterationData(listOf(0,1,2,3)) // デフォルトで[0, 1, 2]を要求
 
                 if (readyDataList != null) {
                     // 3つのアンカーデータを格納した結果オブジェクトを作成
@@ -141,9 +146,14 @@ class MainActivityViewModel @Inject constructor(
                         anchor2 = readyDataList.first { it.id == 2 }
                     )
 
+                    val anchor3 = readyDataList.first { it.id == 3 }
+                    Log.d("anchor3", anchor3.toString())
+
+
+
                     Log.d("anchorD",result.toString())
                     calculateTagPositionFromDistances(result)
-
+                    checkProximityForVibration(anchor3)
                 }
 
             }
@@ -158,6 +168,29 @@ class MainActivityViewModel @Inject constructor(
         dataListenJob = null
     }
 
+    /**
+     * 近接検知を行い、必要であればバイブレーションを要求する
+     * @param anchorData 対象アンカーのデータ
+     */
+    private fun checkProximityForVibration(anchorData: AnchorData) {
+            val distanceThreshold1 = 200
+            val distanceThreshold2 = 100
+            val distanceThreshold3 = 70
+            val discoverThreshold = 30
+            anchorData.distance?.let { dist ->
+                val proximityLevel = when {
+                    dist <= discoverThreshold -> 4
+                    dist <= distanceThreshold3 -> 3
+                    dist <= distanceThreshold2 -> 2
+                    dist <= distanceThreshold1 -> 1
+                    else -> null // どのしきい値にも入らない
+                }
+                Log.d("key", proximityLevel.toString())
+                _uiState.update { it.copy(proximityVibrationAnchorId = proximityLevel) }
+
+            }
+
+    }
 
     /**
      * # 三辺測位を行う関数
@@ -492,6 +525,14 @@ class MainActivityViewModel @Inject constructor(
     }
 
     /**
+     * 近接バイブレーションのトリガーをリセットする
+     */
+    fun onProximityVibrated() {
+        _uiState.update { it.copy(proximityVibrationAnchorId = null) }
+    }
+
+    /**
+     *
      * タイマー終了ダイアログを表示
      */
     fun showTimerFinishedDialog() {
@@ -514,6 +555,7 @@ class MainActivityViewModel @Inject constructor(
             errorMessage = null
         )
     }
+
 
     /**
      * 宝物発見ダイアログを表示
