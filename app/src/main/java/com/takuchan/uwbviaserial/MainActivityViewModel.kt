@@ -100,12 +100,12 @@ class MainActivityViewModel @Inject constructor(
             _uiState.value.distance02,
             _uiState.value.distance12
         )
-        generateRandomTreasureLocation()
     }
+
+
     fun observeConnectionStatus() {
         serialConnectRepository.connectionStatus
             .onEach { status ->
-                Log.d("statusdawa","だわだわ${status}")
                 _uiState.update { it.copy(connected = status == ConnectionStatus.CONNECTED) }
                 // 接続されたらデータ受信を開始し、そうでなければ停止する
                 if (status == ConnectionStatus.CONNECTED) {
@@ -118,8 +118,11 @@ class MainActivityViewModel @Inject constructor(
             .launchIn(viewModelScope)
     }
 
+
+    /**
+     * # シリアル通信のデータをリアルタイムで取得する関数
+     */
     private fun startListeningData() {
-        // すでに実行中なら何もしない
         if (dataListenJob?.isActive == true) return
 
         dataListenJob = serialConnectRepository.listenToSerialData()
@@ -145,7 +148,6 @@ class MainActivityViewModel @Inject constructor(
 
             }
             .catch { e ->
-                // Flowがエラーで終了した場合の処理
                 _uiState.update { it.copy(errorMessage = "Data listening error: ${e.message}") }
             }
             .launchIn(viewModelScope)
@@ -155,6 +157,11 @@ class MainActivityViewModel @Inject constructor(
         dataListenJob?.cancel()
         dataListenJob = null
     }
+
+
+    /**
+     * # 三辺測位を行う関数
+     */
     private fun calculateTagPositionFromDistances(result: TrilaterationResult) {
         val currentState = _uiState.value
         val anchor0Pos = currentState.anchor0
@@ -162,7 +169,7 @@ class MainActivityViewModel @Inject constructor(
         val anchor2Pos = currentState.anchor2
 
         // AnchorDataのdistanceはInt?型で、単位はミリメートル(cm)
-        // 計算にはメートル(m)を使用するため、1000で割る
+        // 計算にはメートル(m)を使用するため、100で割る
         val r0 = result.anchor0.distance?.toDouble()?.div(100.0) ?: return
         val r1 = result.anchor1.distance?.toDouble()?.div(100.0) ?: return
         val r2 = result.anchor2.distance?.toDouble()?.div(100.0) ?: return
@@ -449,6 +456,7 @@ class MainActivityViewModel @Inject constructor(
         )
 
         // 新しい宝物の位置を生成
+        //TODO: 自動的に宝の場所が生成されるようになっている。宝は実世界のUWBの場所と同じ場所に存在しなければならない。
         generateRandomTreasureLocation()
 
         countdownJob = viewModelScope.launch {
