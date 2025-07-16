@@ -78,6 +78,17 @@ class MainActivity : ComponentActivity() {
                     viewModel.showTimerFinishedDialog()
                 }
 
+                if (uiState.proximityVibrationAnchorId == 4){
+                    vibrator.vibrate(VibrationEffect.createOneShot(1000, VibrationEffect.DEFAULT_AMPLITUDE))
+                }else if(uiState.proximityVibrationAnchorId == 3){
+                    vibrator.vibrate(VibrationEffect.createOneShot(300, VibrationEffect.DEFAULT_AMPLITUDE))
+                }else if(uiState.proximityVibrationAnchorId == 2){
+                    vibrator.vibrate(VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE))
+                }else if(uiState.proximityVibrationAnchorId == 1){
+                    vibrator.vibrate(VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE))
+                }
+
+
                 val lifecycleOwner = LocalLifecycleOwner.current
 
                 DisposableEffect(lifecycleOwner) {

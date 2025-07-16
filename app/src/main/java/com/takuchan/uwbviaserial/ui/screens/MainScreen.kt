@@ -23,6 +23,7 @@ import com.takuchan.uwbviaserial.ui.components.GameOverDialog
 import com.takuchan.uwbviaserial.ui.components.GameRoomView
 import com.takuchan.uwbviaserial.ui.components.RoomSettingsDialog
 import com.takuchan.uwbviaserial.ui.components.TimePickerDialog
+import com.takuchan.uwbviaserial.ui.components.TreasureFoundDialog
 import com.takuchan.uwbviaserial.ui.components.TreasureHuntTopBar
 import com.takuchan.uwbviaserial.ui.theme.UWBviaSerialTheme
 
@@ -130,6 +131,12 @@ fun MainScreen(
         if (uiState.showTimerEndDialog) {
             GameOverDialog(
                 onDismiss = onTimerFinishedDialogDismiss
+            )
+        }
+
+        if(uiState.proximityVibrationAnchorId == 4){
+            TreasureFoundDialog(
+                onErrorDialogDismiss
             )
         }
 
