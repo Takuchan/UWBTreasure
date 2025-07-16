@@ -76,20 +76,6 @@ class MainActivity : ComponentActivity() {
                     vibrator.vibrate(VibrationEffect.createOneShot(3000, VibrationEffect.DEFAULT_AMPLITUDE))
                     viewModel.onTimerVibrated()
                     viewModel.showTimerFinishedDialog()
-                } else if (uiState.remainingTime <= 10 && uiState.remainingTime > 0 && uiState.isTimerRunning) {
-                    val vibrationDuration = 200L
-                    val maxAmplitude = VibrationEffect.DEFAULT_AMPLITUDE
-                    val amplitude = ((10 - uiState.remainingTime) / 10.0 * maxAmplitude).toInt().coerceAtLeast(1)
-
-                    if (uiState.lastVibratedSecond != uiState.remainingTime) {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            vibrator.vibrate(VibrationEffect.createOneShot(vibrationDuration, amplitude))
-                        } else {
-                            @Suppress("DEPRECATION")
-                            vibrator.vibrate(vibrationDuration)
-                        }
-                        viewModel.setLastVibratedSecond(uiState.remainingTime)
-                    }
                 }
 
                 val lifecycleOwner = LocalLifecycleOwner.current

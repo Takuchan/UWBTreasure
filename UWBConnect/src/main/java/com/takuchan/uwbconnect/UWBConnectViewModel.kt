@@ -50,9 +50,6 @@ class UsbSerialViewModel @Inject constructor(
     private val usbManager = application.getSystemService(Context.USB_SERVICE) as UsbManager
     private val INTENT_ACTION_GRANT_USB = "com.takuchan.uwbconnect.GRANT_USB"
 
-    private var dataListenJob: Job? = null
-
-    private val uwbParser = ExchangeUWBDataParser()
 
 
     init {
@@ -91,12 +88,6 @@ class UsbSerialViewModel @Inject constructor(
     fun disconnect() {
         viewModelScope.launch {
             repository.disconnect()
-        }
-    }
-
-    fun sendData(data: String) {
-        viewModelScope.launch {
-            repository.sendData(data)
         }
     }
 
