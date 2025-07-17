@@ -136,11 +136,12 @@ fun MainScreen(
             )
         }
 
-        if((uiState.gameState == GameState.PLAYING || uiState.gameState == GameState.FINISHED) && uiState.proximityVibrationAnchorId == 4){
+        if (uiState.showTreasureFoundDialog) {
             TreasureFoundDialog(
                 onDismiss = onFinishedGame
             )
         }
+
 
         // エラーダイアログを追加
         if (uiState.showErrorDialog) {
