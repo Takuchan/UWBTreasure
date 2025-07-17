@@ -532,9 +532,12 @@ class MainActivityViewModel @Inject constructor(
      * ゲーム終了ダイアログの非表示
      */
     fun hideFinishedDialog(){
+        countdownJob?.cancel()
         _uiState.value = _uiState.value.copy(
             gameState = GameState.SETUP,
-            proximityVibrationAnchorId = null
+            proximityVibrationAnchorId = null,
+            isTimerRunning = false,
+            timerFinished = true,
         )
     }
 
