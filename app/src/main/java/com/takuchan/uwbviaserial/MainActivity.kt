@@ -78,15 +78,23 @@ class MainActivity : ComponentActivity() {
                     viewModel.showTimerFinishedDialog()
                 }
 
-                if (uiState.proximityVibrationAnchorId == 4){
-                    vibrator.vibrate(VibrationEffect.createOneShot(1000, VibrationEffect.DEFAULT_AMPLITUDE))
-                }else if(uiState.proximityVibrationAnchorId == 3){
-                    vibrator.vibrate(VibrationEffect.createOneShot(300, VibrationEffect.DEFAULT_AMPLITUDE))
-                }else if(uiState.proximityVibrationAnchorId == 2){
-                    vibrator.vibrate(VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE))
-                }else if(uiState.proximityVibrationAnchorId == 1){
-                    vibrator.vibrate(VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE))
+                if(uiState.gameState == GameState.PLAYING){
+                    when (uiState.proximityVibrationAnchorId) {
+                        4 -> {
+                            vibrator.vibrate(VibrationEffect.createOneShot(1000, VibrationEffect.DEFAULT_AMPLITUDE))
+                        }
+                        3 -> {
+                            vibrator.vibrate(VibrationEffect.createOneShot(300, VibrationEffect.DEFAULT_AMPLITUDE))
+                        }
+                        2 -> {
+                            vibrator.vibrate(VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE))
+                        }
+                        1 -> {
+                            vibrator.vibrate(VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE))
+                        }
+                    }
                 }
+
 
 
                 val lifecycleOwner = LocalLifecycleOwner.current
@@ -117,15 +125,33 @@ class MainActivity : ComponentActivity() {
                         startActivity(intent)
                     },
                     onSetCountDownTime = { viewModel.setCountDown(it) },
-                    onAnchorDistancesSave = { d01, d02, d12 -> viewModel.updateAnchorDistances(d01, d02, d12) },
+                    onAnchorDistancesSave = { d01, d02, d12 ->
+                        viewModel.updateAnchorDistances(
+                            d01,
+                            d02,
+                            d12
+                        )
+                    },
                     onTimerFinishedDialogDismiss = { viewModel.hideTimerFinishedDialog() },
-                    onRoomSettingsSave = { width, height -> viewModel.updateRoomSize(width, height) },
-                    onAnchorPositionUpdate = { anchorIndex, x, y -> viewModel.updateAnchorPosition(anchorIndex, x, y) },
+                    onRoomSettingsSave = { width, height ->
+                        viewModel.updateRoomSize(
+                            width,
+                            height
+                        )
+                    },
+                    onAnchorPositionUpdate = { anchorIndex, x, y ->
+                        viewModel.updateAnchorPosition(
+                            anchorIndex,
+                            x,
+                            y
+                        )
+                    },
                     onErrorDialogDismiss = { viewModel.hideErrorDialog() }, // 追加
                     showSettingsDialog = showSettingsDialog,
                     showRoomSettingsDialog = showRoomSettingsDialog,
                     onSettingsDialogDismiss = { showSettingsDialog = false },
-                    onRoomSettingsDialogDismiss = { showRoomSettingsDialog = false }
+                    onRoomSettingsDialogDismiss = { showRoomSettingsDialog = false },
+                    onFinishedGame = {viewModel.hideFinishedDialog()}
                 )
             }
         }

@@ -14,6 +14,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.takuchan.uwbviaserial.GameState
 import com.takuchan.uwbviaserial.MainActivityUiState
 import com.takuchan.uwbviaserial.ui.components.AnchorSettingsDialog
 import com.takuchan.uwbviaserial.ui.components.ErrorDialog
@@ -38,6 +39,7 @@ fun MainScreen(
     onSetCountDownTime: (Int) -> Unit,
     onAnchorDistancesSave: (Double, Double, Double) -> Unit,
     onTimerFinishedDialogDismiss: () -> Unit,
+    onFinishedGame: () -> Unit,
     onRoomSettingsSave: (Double, Double) -> Unit,
     onAnchorPositionUpdate: (Int, Double, Double) -> Unit,
     onErrorDialogDismiss: () -> Unit, // 追加
@@ -134,9 +136,9 @@ fun MainScreen(
             )
         }
 
-        if(uiState.proximityVibrationAnchorId == 4){
+        if((uiState.gameState == GameState.PLAYING || uiState.gameState == GameState.FINISHED) && uiState.proximityVibrationAnchorId == 4){
             TreasureFoundDialog(
-                onErrorDialogDismiss
+                onDismiss = onFinishedGame
             )
         }
 
@@ -169,7 +171,8 @@ private fun PreviewMainScreen(){
             showRoomSettingsDialog = false,
             onSettingsDialogDismiss = {},
             onRoomSettingsDialogDismiss = {},
-            onStatusButtonClick = {}
+            onStatusButtonClick = {},
+            onFinishedGame = {  }
         )
     }
 }

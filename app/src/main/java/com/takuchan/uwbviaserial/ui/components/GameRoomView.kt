@@ -3,13 +3,17 @@ package com.takuchan.uwbviaserial.ui.components
 import android.util.Log
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -24,6 +28,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.takuchan.uwbconnect.ui.theme.UWBviaSerialTheme
 import com.takuchan.uwbviaserial.MainActivityUiState
 import com.takuchan.uwbviaserial.UwbCoordinate
 import com.takuchan.uwbviaserial.ui.theme.ComponentsColor
@@ -74,6 +79,24 @@ fun GameRoomView(
                     .align(Alignment.TopEnd)
                     .padding(16.dp)
             )
+
+            if(uiState.proximityVibrationAnchorId == 2){
+                Text(
+                    text = "😯",
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 16.dp)
+                )
+            }else if(uiState.proximityVibrationAnchorId == 3){
+                Text(
+                    text = "おぉっ",
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 16.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.displayLarge
+                )
+            }
         }
     }
 }
@@ -127,10 +150,6 @@ private fun DrawScope.drawGameRoom(uiState: MainActivityUiState) {
     // タグを描画
     drawTag(uiState.tag, ::coordToPixel)
 
-    // 隠されたUWBを描画（点滅効果付き）
-    if (uiState.isTimerRunning) {
-        drawHiddenTreasure(uiState.hiddenTag, ::coordToPixel)
-    }
 }
 
 
@@ -217,35 +236,17 @@ fun DrawScope.drawTag(
     )
 }
 
-fun DrawScope.drawHiddenTreasure(
-    hiddenTag: UwbCoordinate,
-    coordToPixel: (Double, Double) -> Offset
-) {
-    val center = coordToPixel(hiddenTag.x, hiddenTag.y)
-    val radius = 20.dp.toPx()
-
-    // 宝箱のような形で描画
-    drawCircle(
-        color = ComponentsColor.HiddenTag,
-        radius = radius,
-        center = center
-    )
-
-    // 宝箱のハイライト
-    drawCircle(
-        color = Color.White.copy(alpha = 0.3f),
-        radius = radius * 0.7f,
-        center = center
-    )
-}
 
 @Preview(showBackground = true)
 @Composable
 private fun PreviewGameRoomView(){
-    GameRoomView(
-        uiState = MainActivityUiState(),
-        onAnchorPositionUpdate = {it,it2,it3->
+    UWBviaSerialTheme {
+        GameRoomView(
+            uiState = MainActivityUiState(),
+            onAnchorPositionUpdate = {it,it2,it3->
 
-        }
-    )
+            }
+        )
+    }
+
 }

@@ -147,11 +147,7 @@ class MainActivityViewModel @Inject constructor(
                     )
 
                     val anchor3 = readyDataList.first { it.id == 3 }
-                    Log.d("anchor3", anchor3.toString())
 
-
-
-                    Log.d("anchorD",result.toString())
                     calculateTagPositionFromDistances(result)
                     checkProximityForVibration(anchor3)
                 }
@@ -185,11 +181,10 @@ class MainActivityViewModel @Inject constructor(
                     dist <= distanceThreshold1 -> 1
                     else -> null // どのしきい値にも入らない
                 }
-                Log.d("key", proximityLevel.toString())
-                _uiState.update { it.copy(proximityVibrationAnchorId = proximityLevel) }
-
+                if(_uiState.value.gameState == GameState.PLAYING){
+                    _uiState.update { it.copy(proximityVibrationAnchorId = proximityLevel) }
+                }
             }
-
     }
 
     /**
@@ -271,7 +266,6 @@ class MainActivityViewModel @Inject constructor(
             currentState.distance12
         )
 
-        generateRandomTreasureLocation()
     }
 
     /**
@@ -423,20 +417,6 @@ class MainActivityViewModel @Inject constructor(
         return sqrt(dx * dx + dy * dy)
     }
 
-    /**
-     * ランダムな宝物の位置を生成
-     */
-    private fun generateRandomTreasureLocation() {
-        val currentState = _uiState.value
-        val margin = 1.0
-
-        val randomX = Random.nextDouble(margin, currentState.roomWidth - margin)
-        val randomY = Random.nextDouble(margin, currentState.roomHeight - margin)
-
-        _uiState.value = _uiState.value.copy(
-            hiddenTag = UwbCoordinate(randomX, randomY)
-        )
-    }
 
     /**
      * プレイヤーの位置を更新
@@ -489,8 +469,6 @@ class MainActivityViewModel @Inject constructor(
         )
 
         // 新しい宝物の位置を生成
-        //TODO: 自動的に宝の場所が生成されるようになっている。宝は実世界のUWBの場所と同じ場所に存在しなければならない。
-        generateRandomTreasureLocation()
 
         countdownJob = viewModelScope.launch {
             for (i in totalSeconds downTo 0) {
@@ -524,12 +502,6 @@ class MainActivityViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(timerFinished = false)
     }
 
-    /**
-     * 近接バイブレーションのトリガーをリセットする
-     */
-    fun onProximityVibrated() {
-        _uiState.update { it.copy(proximityVibrationAnchorId = null) }
-    }
 
     /**
      *
@@ -556,6 +528,16 @@ class MainActivityViewModel @Inject constructor(
         )
     }
 
+    /**
+     * ゲーム終了ダイアログの非表示
+     */
+    fun hideFinishedDialog(){
+        _uiState.value = _uiState.value.copy(
+            gameState = GameState.SETUP,
+            proximityVibrationAnchorId = null
+        )
+    }
+
 
     /**
      * 宝物発見ダイアログを表示
@@ -564,29 +546,6 @@ class MainActivityViewModel @Inject constructor(
         // 実装はUIで行う
     }
 
-    /**
-     * 最後にバイブレーションした秒数を設定
-     */
-    fun setLastVibratedSecond(second: Int) {
-        _uiState.value = _uiState.value.copy(lastVibratedSecond = second)
-    }
-
-    /**
-     * ゲームをリセット
-     */
-    fun resetGame() {
-        countdownJob?.cancel()
-        _uiState.value = _uiState.value.copy(
-            remainingTime = 0,
-            isTimerRunning = false,
-            timerFinished = false,
-            showTimerEndDialog = false,
-            gameState = GameState.SETUP,
-            foundTreasure = false,
-            score = 0
-        )
-        generateRandomTreasureLocation()
-    }
 
     override fun onCleared() {
         super.onCleared()
